@@ -1,0 +1,30 @@
+target
+classes
+logs
+*.log
+
+### IDEA ###
+*.iws
+*.iml
+*.ipr
+.idea
+.shelf
+
+### Using Maven project in Eclipse
+.factorypath
+
+### Eclipse ###
+.classpath
+.project
+.settings
+.metadata
+
+.DS_Store
+
+httpRequests/
+temp/
+tmp/
+
+
+### Local git configuration
+.gitattributes
