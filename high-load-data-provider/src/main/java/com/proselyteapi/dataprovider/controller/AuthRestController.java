@@ -4,14 +4,16 @@ import com.proselyteapi.dataprovider.dto.AuthRequestDto;
 import com.proselyteapi.dataprovider.dto.AuthResponseDto;
 import com.proselyteapi.dataprovider.dto.UserDto;
 import com.proselyteapi.dataprovider.mapper.UserMapper;
-import com.proselyteapi.dataprovider.service.TokenService;
 import com.proselyteapi.dataprovider.service.AuthenticationService;
+import com.proselyteapi.dataprovider.service.TokenService;
 import com.proselyteapi.dataprovider.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
@@ -26,13 +28,15 @@ public class AuthRestController {
 
 
     @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
     public Mono<UserDto> register(@RequestBody UserDto dto) {
         var user = userMapper.map(dto);
         return userService.register(user)
             .map(userMapper::map);
     }
 
-    @PostMapping("/get-api-key")
+    @PostMapping("/get-token")
+    @ResponseStatus(HttpStatus.OK)
     public Mono<AuthResponseDto> getToken(@RequestBody AuthRequestDto dto) {
         var authenticationToken = new UsernamePasswordAuthenticationToken(dto.getUsername(), dto.getPassword());
         return authenticationService.authenticate(authenticationToken)
@@ -46,5 +50,11 @@ public class AuthRestController {
                         .expiresAt(tokenDetails.getExpiresAt())
                         .build()
                 ));
+    }
+
+    @PostMapping("/get-api-key")
+    @ResponseStatus(HttpStatus.OK)
+    public Mono<String> getApiKey(@RequestBody AuthRequestDto dto) {
+        return authenticationService.getApiKey(dto.getUsername(), dto.getPassword());
     }
 }

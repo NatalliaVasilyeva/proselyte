@@ -30,19 +30,20 @@ public class JwtUtil {
             .onErrorResume(ex -> Mono.error(new UnauthorizedException(ex.getMessage())));
     }
 
+    public Claims getAllClaimsFromToken(String token) {
+        return Jwts.parser()
+            .setSigningKey(decodeBase64ToString(secret))
+            .parseClaimsJws(token)
+            .getBody();
+    }
+
+
     private TokenClaimData verifyToken(String token) {
         var claims = getAllClaimsFromToken(token);
         if (isTokenExpired(claims)) {
             throw new CredentialsExpiredException("Token expired");
         }
         return new TokenClaimData(token, claims);
-    }
-
-    public Claims getAllClaimsFromToken(String token) {
-            return Jwts.parser()
-                .setSigningKey(decodeBase64ToString(secret))
-                .parseClaimsJws(token)
-                .getBody();
     }
 
     private <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {

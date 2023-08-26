@@ -6,6 +6,7 @@ import com.proselyteapi.dataprovider.entity.Role;
 import com.proselyteapi.dataprovider.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -38,6 +39,13 @@ public class UserService implements ReactiveUserDetailsService {
         ).doOnSuccess(u ->
             log.info("User service - user: {} was created", u)
         );
+    }
+
+    public Mono<Boolean> isUserRegister(String username, String password) {
+       return findByUsername(username)
+            .filter(Objects::nonNull)
+            .switchIfEmpty(Mono.error(new UsernameNotFoundException("User with such username not found!")))
+            .map(u -> passwordEncoder.matches(password, u.getPassword()));
     }
 
     public Mono<User> getUserById(Long id) {
