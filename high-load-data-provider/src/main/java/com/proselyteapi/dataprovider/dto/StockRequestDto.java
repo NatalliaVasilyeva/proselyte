@@ -3,9 +3,11 @@ package com.proselyteapi.dataprovider.dto;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+@Builder(toBuilder = true)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

@@ -20,8 +20,7 @@ import org.springframework.web.context.WebApplicationContext;
 @SpringJUnitWebConfig
 @SpringBootTest(classes = {
     HighLoadDataProviderApplication.class,
-    TestConfiguration.class,
-//    TestDataHelper.class
+    TestConfiguration.class
 }, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("test")
 @TestPropertySource(locations = "classpath:/application-test.yaml")
