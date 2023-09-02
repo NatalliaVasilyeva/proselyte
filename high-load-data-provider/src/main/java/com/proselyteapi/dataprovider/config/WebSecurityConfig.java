@@ -27,8 +27,7 @@ public class WebSecurityConfig {
 
     @Value("${jwt.secret}")
     private String secret;
-
-    private final String [] publicRoutes = {"/api/v1/register", "/api/v1/get-api-key"};
+    private final String [] privateRoutes = {"/api/v1/get-api-key"};
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http, AuthenticationManager authenticationManager, TokenService tokenService) {
@@ -37,23 +36,21 @@ public class WebSecurityConfig {
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .authorizeExchange(exchanges ->
                 exchanges
-                    .pathMatchers(HttpMethod.OPTIONS)
-                    .permitAll()
-                    .pathMatchers(publicRoutes)
-                    .permitAll()
-                    .anyExchange()
+                    .pathMatchers(privateRoutes)
                     .authenticated()
+                    .anyExchange()
+                    .permitAll()
             )
             .exceptionHandling(handling ->
                 handling.authenticationEntryPoint((swe , e) -> {
-                    log.error("SecurityWebFilterChain - unauthorized error: {}", e.getMessage());
-                    return Mono.fromRunnable(() -> swe.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED));
-            })
-                .accessDeniedHandler((swe, e) -> {
-                    log.error("SecurityWebFilterChain - access denied: {}", e.getMessage());
+                        log.error("SecurityWebFilterChain - unauthorized error: {}", e.getMessage());
+                        return Mono.fromRunnable(() -> swe.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED));
+                    })
+                    .accessDeniedHandler((swe, e) -> {
+                        log.error("SecurityWebFilterChain - access denied: {}", e.getMessage());
 
-                    return Mono.fromRunnable(() -> swe.getResponse().setStatusCode(HttpStatus.FORBIDDEN));
-            }))
+                        return Mono.fromRunnable(() -> swe.getResponse().setStatusCode(HttpStatus.FORBIDDEN));
+                    }))
             .addFilterAt(bearerAuthenticationFilter(authenticationManager, tokenService), SecurityWebFiltersOrder.AUTHENTICATION)
             .build();
     }

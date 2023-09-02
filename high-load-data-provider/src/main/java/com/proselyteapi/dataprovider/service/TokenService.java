@@ -25,13 +25,13 @@ import java.util.UUID;
 public class TokenService {
 
     @Value("${jwt.secret}")
-    private String secret;
+    private final String secret;
 
     @Value("${jwt.expiration}")
-    private Long expirationTimeInMinutes;
+    private final Long expirationTimeInMinutes;
 
     @Value("${jwt.issuer}")
-    private String issuer;
+    private final String issuer;
     private static final String ROLE = "role";
     private static final String USERNAME = "username";
 

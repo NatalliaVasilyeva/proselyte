@@ -1,6 +1,8 @@
 package com.proselyteapi.dataprovider.exception;
 
 import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.SignatureException;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,7 +11,6 @@ import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.reactive.result.method.annotation.ResponseEntityExceptionHandler;
 import reactor.core.publisher.Mono;
 
@@ -27,14 +28,14 @@ public class RestControllerExceptionHandler extends ResponseEntityExceptionHandl
         return createResponse(ex, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler({JwtException.class})
+    @ExceptionHandler({JwtException.class, SignatureException.class})
     public Mono<ResponseEntity<RestErrorResponse>> handleJwtException(JwtException ex) {
         log.error("Jwt exception name: {}, message: ({}):", ex.getClass().getName(), ex.getMessage(), ex);
         return createResponse(ex, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler({AuthenticationException.class})
-    public Mono<ResponseEntity<RestErrorResponse>> handleAccountStatusException(AccountStatusException ex) {
+    @ExceptionHandler({AuthenticationException.class, AccountStatusException.class})
+    public Mono<ResponseEntity<RestErrorResponse>> handleAccountStatusException(AuthenticationException ex) {
         log.error("Authentication exception name: {}, message: ({}):", ex.getClass().getName(), ex.getMessage(), ex);
         return createResponse(ex, HttpStatus.UNAUTHORIZED);
     }
@@ -53,6 +54,11 @@ public class RestControllerExceptionHandler extends ResponseEntityExceptionHandl
     public Mono<ResponseEntity<RestErrorResponse>> handleException(Exception ex) {
         log.error("(Runtime-)Exception raised: {}, stacktrace: {}", ex.getMessage(), ex.getStackTrace(), ex);
         return createResponse("Internal server error occurred. Please, contact administrator", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public Mono<ResponseEntity<RestErrorResponse>> handleConstraintViolationException(Exception ex) {
+        return createResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
     private Mono<ResponseEntity<RestErrorResponse>> createResponse(Exception ex, HttpStatus status) {

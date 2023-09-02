@@ -1,4 +1,4 @@
-package proselyteapi.com.highloaddataprovider;
+package unit.com.proselyteapi.dataprovider;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

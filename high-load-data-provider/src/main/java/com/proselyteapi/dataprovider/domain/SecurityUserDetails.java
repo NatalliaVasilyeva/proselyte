@@ -10,7 +10,7 @@ import java.util.Collection;
 
 @Setter
 @Getter
-@EqualsAndHashCode
+@EqualsAndHashCode(callSuper=true)
 public class SecurityUserDetails extends User {
 
     private Long id;

@@ -26,6 +26,8 @@ public class AuthenticationService {
 
     private final PasswordEncoder passwordEncoder;
 
+    private final ApiKeyUtils apiKeyUtils;
+
     private final Scheduler scheduler = Schedulers.newParallel("password-encoder", Schedulers.DEFAULT_POOL_SIZE, true);
 
     public Mono<User> authenticate(final Authentication authentication) {
@@ -39,6 +41,17 @@ public class AuthenticationService {
                 result.isEnabled(),
                 null,
                 null));
+    }
+
+    public Mono<String> getApiKey(String username, String password) {
+       return userService.isUserRegister(username,password)
+            .flatMap(isRegister -> {
+                if (isRegister) {
+                    return Mono.just(apiKeyUtils.getApiKey());
+                } else {
+                    return Mono.empty();
+                }
+            });
     }
 
     private Mono<UserDetails> getAuthenticatedUser(Authentication authentication) {
