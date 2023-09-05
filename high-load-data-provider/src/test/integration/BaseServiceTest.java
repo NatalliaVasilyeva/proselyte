@@ -1,5 +1,3 @@
-package integration.com.proselyteapi.dataprovider;
-
 import annotation.Integration;
 import com.proselyteapi.dataprovider.HighLoadDataProviderApplication;
 import org.junit.jupiter.api.extension.ExtendWith;

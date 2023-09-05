@@ -23,6 +23,10 @@ public class DataStorage {
         return symbols.get(index);
     }
 
+    public CopyOnWriteArrayList<String> getAllSymbol() {
+        return symbols;
+    }
+
     public void addSymbol(String symbol) {
         symbols.addIfAbsent(symbol);
     }
@@ -41,6 +45,12 @@ public class DataStorage {
 
     public String getName() {
         return companyNames.poll();
+    }
+
+    public void addName(String name) {
+        if (!companyNames.contains(name)) {
+            companyNames.add(name);
+        }
     }
 
     public Long getCompanyId(String symbol) {

@@ -7,15 +7,13 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
-import org.springframework.data.redis.core.RedisHash;
-import org.springframework.data.redis.core.index.Indexed;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-@RedisHash
+//@RedisHash
 @Data
 @Builder(toBuilder = true)
 @NoArgsConstructor
@@ -24,7 +22,6 @@ import java.time.LocalDateTime;
 public class Stock implements Serializable {
     @Id
     private Long id;
-    @Indexed
     private String symbol;
     private Double price;
     @Column("is_privilege")

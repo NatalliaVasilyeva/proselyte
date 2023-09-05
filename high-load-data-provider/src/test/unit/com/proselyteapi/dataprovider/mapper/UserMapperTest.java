@@ -1,4 +1,4 @@
-package unit.com.proselyteapi.dataprovider.mapper;
+package com.proselyteapi.dataprovider.mapper;
 
 import annotation.Unit;
 import com.proselyteapi.dataprovider.dto.UserDto;

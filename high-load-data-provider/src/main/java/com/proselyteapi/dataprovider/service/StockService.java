@@ -7,6 +7,7 @@ import com.proselyteapi.dataprovider.repository.CustomStockRepository;
 import com.proselyteapi.dataprovider.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -21,13 +22,14 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@CacheConfig(cacheNames = "stocks")
+//@CacheConfig(cacheNames = "stocks")
+@ConditionalOnProperty(name = "cache.enabled", havingValue = "true")
 public class StockService {
 
     private final StockRepository stockRepository;
     private final CustomStockRepository customStockRepository;
 
-    @CachePut(cacheNames = "stocks", key = "#result.block().symbol + #result.block().createdAt", unless = "#result.block().symbol==null")
+//    @CachePut(cacheNames = "stocks", key = "#result.block().symbol + #result.block().createdAt", unless = "#result.block().symbol==null")
     public Mono<StockResponseDto> createStock(StockRequestDto stockDto) {
         return Mono.just(stockDto)
                 .map(StockMapper.MAPPER::map)
@@ -36,7 +38,7 @@ public class StockService {
 
     }
 
-    @CachePut(cacheNames = "stocks", key = "#result.block().symbol + #result.block().createdAt", unless = "#result.block().symbol==null")
+//    @CachePut(cacheNames = "stocks", key = "#result.block().symbol + #result.block().createdAt", unless = "#result.block().symbol==null")
     public Flux<StockResponseDto> createStocks(List<StockRequestDto> stockDtos) {
         return Flux.fromIterable(stockDtos)
                 .switchIfEmpty(Flux.empty())
@@ -46,7 +48,7 @@ public class StockService {
                 .flatMapMany(Flux::fromIterable);
     }
 
-    @Cacheable(cacheNames = "stocks")
+//    @Cacheable(cacheNames = "stocks")
     public Flux<StockResponseDto> getAllStocks() {
         return stockRepository.findAll()
                 .switchIfEmpty(Flux.empty())
@@ -55,7 +57,7 @@ public class StockService {
                 .cache();
     }
 
-    @Cacheable(cacheNames = "stocks")
+//    @Cacheable(cacheNames = "stocks")
     public Flux<StockResponseDto> getAllBySymbol(String symbol) {
 
         return stockRepository.findAllBySymbol(symbol)
@@ -65,7 +67,7 @@ public class StockService {
                 .cache();
     }
 
-    @Cacheable(cacheNames = "stocks", key = "#result.block().symbol + #result.block().createdAt")
+//    @Cacheable(cacheNames = "stocks", key = "#result.block().symbol + #result.block().createdAt")
     public Mono<StockResponseDto> getLastChangedBySymbol(String symbol) {
         return stockRepository.findFirstBySymbolOrderByCreatedAtDesc(symbol)
                 .map(StockMapper.MAPPER::map)
@@ -73,9 +75,9 @@ public class StockService {
     }
 
     /* Clears cache after 10 minutes. */
-    @CacheEvict(allEntries = true, cacheNames = {"stocks"})
-    @Scheduled(fixedDelay = 600000)
-    public void cacheEvict() {
-        log.info("Cleaning cache stocks");
-    }
+//    @CacheEvict(allEntries = true, cacheNames = {"stocks"})
+//    @Scheduled(fixedDelay = 600000)
+//    public void cacheEvict() {
+//        log.info("Cleaning cache stocks");
+//    }
 }

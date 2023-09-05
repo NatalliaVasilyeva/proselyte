@@ -11,6 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -22,29 +23,36 @@ public class CronJob {
     private final StockService stockService;
 
 
-    @Async
-    @Scheduled(cron = "@reboot")
-    public void onStartupGenerateSymbolAndCompanyDataJob() {
+    @Async("asyncCompanyExecutor")
+    @Scheduled(initialDelay = 100, fixedDelay = Long.MAX_VALUE, timeUnit = TimeUnit.NANOSECONDS)
+    public void onStartupGenerateSymbolsAndNamesJob() {
         CompletableFuture.runAsync(dataGeneratingService::fillSymbolsList)
-                .thenRunAsync(dataGeneratingService::fillCompanyNamesQueue);
+                .thenRun(dataGeneratingService::fillCompanyNamesQueue)
+                .join();
+
         CompletableFuture
                 .supplyAsync(dataGeneratingService::createCompanies)
-                .thenApplyAsync(companyService::createCompanies)
-                .thenAccept(companyResponseDtoFlux ->
-                        companyResponseDtoFlux
-                                .collectList()
-                                .flatMapMany(companyResponseDtos -> {
-                                    companyResponseDtos.forEach(companyResponseDto -> dataGeneratingService.fillCompanyIdsMap(companyResponseDto.getSymbol(), companyResponseDto.getId()));
-                                    return companyResponseDtoFlux;
-                                }))
+                .thenApply(companyService::createCompanies)
+                .thenAccept(companyResponseDtoFlux -> {
+
+                    System.out.println("after saving");
+                    companyResponseDtoFlux
+                        .collectList()
+                            .doOnNext(companyResponseDtos -> {
+                            System.out.println("HERE " + companyResponseDtos.toString());
+                            companyResponseDtos.forEach(companyResponseDto -> dataGeneratingService.fillCompanyIdsMap(companyResponseDto.getSymbol(), companyResponseDto.getId()));
+                        });
+                })
                 .join();
     }
 
-    @Async
-    @Scheduled(cron = "*/10 * * * * *")
+    @Async("asyncStockExecutor")
+    @Scheduled(cron = "*/150 * * * * *")
     public void generateStockDataJob() {
-        CompletableFuture.supplyAsync(dataGeneratingService::createStock)
-                .thenAccept(stockService::createStock)
+        System.out.println("start");
+        CompletableFuture.supplyAsync(dataGeneratingService::createStocks)
+                .thenAccept(stockService::createStocks)
                 .join();
+        System.out.println("finish");
     }
 }

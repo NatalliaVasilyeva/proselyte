@@ -7,6 +7,7 @@ import com.proselyteapi.dataprovider.repository.CompanyRepository;
 import com.proselyteapi.dataprovider.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -22,13 +23,14 @@ import java.util.NoSuchElementException;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@CacheConfig(cacheNames = "companies")
+//@CacheConfig(cacheNames = "companies")
+@ConditionalOnProperty(name = "cache.enabled", havingValue = "true")
 public class CompanyService {
 
     private final CompanyRepository companyRepository;
     private final StockRepository stockRepository;
 
-    @CachePut(cacheNames = "companies", key = "#result.block().symbol", unless = "#result.block().symbol==null")
+//    @CachePut(cacheNames = "companies", key = "#result.block().symbol", unless = "#result.block().symbol==null")
     public Mono<CompanyResponseDto> createCompany(CompanyRequestDto companyRequestDto) {
         return Mono.just(companyRequestDto)
                 .map(CompanyMapper.MAPPER::map)
@@ -36,8 +38,9 @@ public class CompanyService {
                 .map(CompanyMapper.MAPPER::map);
     }
 
-    @CachePut(cacheNames = "companies", key = "#result.block().symbol", unless = "#result.block().symbol==null")
+//    @CachePut(cacheNames = "companies", key = "#result.block().symbol", unless = "#result.block().symbol==null")
     public Flux<CompanyResponseDto> createCompanies(List<CompanyRequestDto> companyRequestDtos) {
+        System.out.println("save companies");
         return Flux.fromIterable(companyRequestDtos)
                 .switchIfEmpty(Flux.empty())
                 .flatMap(companyRequestDto -> companyRepository.save(CompanyMapper.MAPPER.map(companyRequestDto)))
@@ -46,7 +49,7 @@ public class CompanyService {
                 .flatMapMany(Flux::fromIterable);
     }
 
-    @Cacheable(cacheNames = "companies")
+//    @Cacheable(cacheNames = "companies")
     public Flux<CompanyResponseDto> getAllCompaniesWithStocks() {
         return companyRepository.findAll()
                 .switchIfEmpty(Flux.empty())
@@ -60,7 +63,7 @@ public class CompanyService {
                 .cache();
     }
 
-    @Cacheable(cacheNames = "companies")
+//    @Cacheable(cacheNames = "companies")
     public Flux<CompanyResponseDto> getAllCompaniesWithoutStocks() {
         return companyRepository.findAll()
                 .switchIfEmpty(Flux.empty())
@@ -69,7 +72,7 @@ public class CompanyService {
                 .cache();
     }
 
-    @Cacheable(cacheNames = "companies", key = "#result.block().symbol")
+//    @Cacheable(cacheNames = "companies", key = "#result.block().symbol")
     public Mono<CompanyResponseDto> getBySymbol(String symbol) {
         return Mono.zip(companyRepository.findBySymbol(symbol), stockRepository.findAllBySymbol(symbol).collectList())
                 .map(tuples -> {
@@ -82,7 +85,7 @@ public class CompanyService {
                 .cache();
     }
 
-    @CacheEvict(cacheNames = "companies", key = "#result.block().id")
+//    @CacheEvict(cacheNames = "companies", key = "#result.block().id")
     public void updateCompany(Long id, CompanyRequestDto companyRequestDto) {
         companyRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NoSuchElementException(String.format("Company with id %s does not exist", id))))
@@ -94,7 +97,7 @@ public class CompanyService {
                 });
     }
 
-    @CacheEvict(cacheNames = "companies", key = "#result.block().id")
+//    @CacheEvict(cacheNames = "companies", key = "#result.block().id")
     public void deleteById(Long companyId) {
         companyRepository.findById(companyId)
                 .switchIfEmpty(Mono.error(new NoSuchElementException(String.format("Company with id %s does not exist", companyId))))
@@ -104,9 +107,9 @@ public class CompanyService {
     }
 
     /* Clears cache after 10 minutes. */
-    @CacheEvict(allEntries = true, cacheNames = {"companies"})
-    @Scheduled(fixedDelay = 600000)
-    public void cacheEvict() {
-        log.info("Cleaning cache companies");
-    }
+//    @CacheEvict(allEntries = true, cacheNames = {"companies"})
+//    @Scheduled(fixedDelay = 600000)
+//    public void cacheEvict() {
+//        log.info("Cleaning cache companies");
+//    }
 }

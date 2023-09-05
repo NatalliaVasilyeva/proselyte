@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import static com.proselyteapi.dataprovider.generator.DataStorage.COMPANIES_NUMBER;
@@ -44,24 +45,43 @@ public class DataGeneratingService {
     }
 
     public void fillCompanyNamesQueue() {
-        Stream.iterate(0, n -> n < COMPANIES_NUMBER, n -> n + 1)
-                .forEach(iteration -> dataStorage.getCompanyNames()
-                        .add(faker.company().name()));
+        while (dataStorage.getCompanyNames().size() < COMPANIES_NUMBER) {
+            dataStorage.addName(faker.company().name());
+        }
     }
 
     public void fillCompanyIdsMap(String symbol, Long id) {
         dataStorage.addCompanyId(symbol, id);
     }
 
-
     public List<CompanyRequestDto> createCompanies() {
-        return dataStorage.getSymbols().stream()
-                .map(symbol -> CompanyRequestDto.builder()
+        List<CompletableFuture<CompanyRequestDto>> futures  = dataStorage.getAllSymbol().stream()
+                .map(symbol ->
+                        CompletableFuture.supplyAsync(() ->
+                        CompanyRequestDto.builder()
                         .name(dataStorage.getName())
                         .symbol(symbol)
                         .enabled(true)
-                        .build())
+                        .build()))
                 .toList();
+
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]))
+                .thenApply(v -> futures.stream()
+                        .map(CompletableFuture::join)
+                        .toList())
+                .join();
+    }
+
+    public List<StockRequestDto> createStocks() {
+        List<CompletableFuture<StockRequestDto>> futures =  Stream.iterate(0, n -> n < getRandomIntInRange(10, 40), n -> n + 1)
+                .map(data -> CompletableFuture.supplyAsync(this::createStock))
+                .toList();
+
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]))
+                .thenApply(v -> futures.stream()
+                        .map(CompletableFuture::join)
+                        .toList())
+                .join();
     }
 
     public StockRequestDto createStock() {
