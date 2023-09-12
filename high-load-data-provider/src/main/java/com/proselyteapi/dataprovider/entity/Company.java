@@ -7,15 +7,13 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Transient;
-import org.springframework.data.redis.core.RedisHash;
-import org.springframework.data.redis.core.index.Indexed;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@RedisHash
+//@RedisHash
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,7 +23,6 @@ public class Company implements Serializable {
     private Long id;
     private String name;
     private boolean enabled;
-    @Indexed
     private String symbol;
     @Transient
     private List<Stock> stocks;

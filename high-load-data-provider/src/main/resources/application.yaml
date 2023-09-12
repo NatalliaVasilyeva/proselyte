@@ -48,3 +48,9 @@ logging:
     org.springframework.boot.autoconfigure.security: INFO
     org.springframework.web: INFO
     org.springframework.security: DEBUG
+
+cache:
+  enabled: true
+
+scheduling:
+  enabled: true

@@ -1,4 +1,4 @@
-package unit.com.proselyteapi.dataprovider.security;
+package com.proselyteapi.dataprovider.security;
 
 import annotation.Unit;
 import com.proselyteapi.dataprovider.entity.Role;
