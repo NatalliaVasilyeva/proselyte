@@ -2,17 +2,14 @@ package com.proselyteapi.dataprovider.service;
 
 import com.proselyteapi.dataprovider.dto.CompanyRequestDto;
 import com.proselyteapi.dataprovider.dto.CompanyResponseDto;
+import com.proselyteapi.dataprovider.entity.Company;
+import com.proselyteapi.dataprovider.entity.Stock;
 import com.proselyteapi.dataprovider.mapper.CompanyMapper;
 import com.proselyteapi.dataprovider.repository.CompanyRepository;
 import com.proselyteapi.dataprovider.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.cache.annotation.CacheConfig;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -23,93 +20,134 @@ import java.util.NoSuchElementException;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-//@CacheConfig(cacheNames = "companies")
-@ConditionalOnProperty(name = "cache.enabled", havingValue = "true")
 public class CompanyService {
 
+    private final ReactiveRedisTemplate<String, Company> reactiveRedisCompanyTemplate;
+    private final ReactiveRedisTemplate<String, Stock> reactiveRedisStockTemplate;
     private final CompanyRepository companyRepository;
     private final StockRepository stockRepository;
+    public static final String COMPANY_KEY = "company:";
+    public static final String STOCK_KEY = "stock:";
 
-//    @CachePut(cacheNames = "companies", key = "#result.block().symbol", unless = "#result.block().symbol==null")
-    public Mono<CompanyResponseDto> createCompany(CompanyRequestDto companyRequestDto) {
+    public Mono<CompanyResponseDto> saveCompany(CompanyRequestDto companyRequestDto) {
         return Mono.just(companyRequestDto)
-                .map(CompanyMapper.MAPPER::map)
-                .flatMap(companyRepository::save)
-                .map(CompanyMapper.MAPPER::map);
+            .map(CompanyMapper.MAPPER::map)
+            .flatMap(company -> companyRepository.save(company)
+                .flatMap(savedCompany -> reactiveRedisCompanyTemplate.opsForValue().set(COMPANY_KEY + savedCompany.getSymbol(), savedCompany).thenReturn(savedCompany)))
+            .map(CompanyMapper.MAPPER::map);
     }
 
-//    @CachePut(cacheNames = "companies", key = "#result.block().symbol", unless = "#result.block().symbol==null")
-    public Flux<CompanyResponseDto> createCompanies(List<CompanyRequestDto> companyRequestDtos) {
-        System.out.println("save companies");
+    public Flux<CompanyResponseDto> saveCompanies(List<CompanyRequestDto> companyRequestDtos) {
         return Flux.fromIterable(companyRequestDtos)
-                .switchIfEmpty(Flux.empty())
-                .flatMap(companyRequestDto -> companyRepository.save(CompanyMapper.MAPPER.map(companyRequestDto)))
-                .collectList()
-                .map(CompanyMapper.MAPPER::mapCompanyList)
-                .flatMapMany(Flux::fromIterable);
+            .switchIfEmpty(Flux.empty())
+            .map(CompanyMapper.MAPPER::map)
+            .flatMap(companies -> companyRepository.save(companies)
+                .flatMap(savedCompany -> reactiveRedisCompanyTemplate.opsForValue().set(COMPANY_KEY + savedCompany.getSymbol(), savedCompany).thenReturn(savedCompany)))
+            .collectList()
+            .map(CompanyMapper.MAPPER::mapCompanyList)
+            .flatMapMany(Flux::fromIterable);
     }
 
-//    @Cacheable(cacheNames = "companies")
     public Flux<CompanyResponseDto> getAllCompaniesWithStocks() {
-        return companyRepository.findAll()
-                .switchIfEmpty(Flux.empty())
-                .flatMap(company -> stockRepository.findAllBySymbol(company.getSymbol()).collectList()
-                        .map(stocks -> {
-                            company.setStocks(stocks);
-                            return company;
-                        }))
-                .collectList()
-                .flatMapIterable(CompanyMapper.MAPPER::mapCompanyList)
-                .cache();
+        return reactiveRedisCompanyTemplate.keys(COMPANY_KEY + "*")
+            // Fetching cached companies.
+            .flatMap(key -> reactiveRedisCompanyTemplate.opsForValue().get(key))
+            // If cache is empty, fetch the database for companies
+            .switchIfEmpty(companyRepository.findAll()
+                // Persisting the fetched companies in the cache.
+                .flatMap(company -> {
+                        stockRepository.findAllBySymbol(company.getSymbol()).collectList()
+                            .map(stocks -> {
+                                company.setStocks(stocks);
+                                return stocks;
+                            });
+                        return reactiveRedisCompanyTemplate
+                            .opsForValue()
+                            .set(COMPANY_KEY + company.getSymbol(), company);
+                    }
+                )
+                // Fetching the companies from the updated cache.
+                .thenMany(reactiveRedisCompanyTemplate
+                    .keys(COMPANY_KEY + "*")
+                    .flatMap(key -> reactiveRedisCompanyTemplate.opsForValue().get(key))
+                )
+            )
+            .collectList()
+            .flatMapIterable(CompanyMapper.MAPPER::mapCompanyList);
     }
 
-//    @Cacheable(cacheNames = "companies")
     public Flux<CompanyResponseDto> getAllCompaniesWithoutStocks() {
-        return companyRepository.findAll()
-                .switchIfEmpty(Flux.empty())
-                .collectList()
-                .flatMapIterable(CompanyMapper.MAPPER::mapCompanyList)
-                .cache();
+        return reactiveRedisCompanyTemplate.keys(COMPANY_KEY + "*")
+            // Fetching cached companies.
+            .flatMap(key -> reactiveRedisCompanyTemplate.opsForValue().get(key))
+            // If cache is empty, fetch the database for companies
+            .switchIfEmpty(Flux.defer(() -> companyRepository.findAll()
+                // Persisting the fetched companies in the cache.
+                .flatMap(company -> reactiveRedisCompanyTemplate
+                        .opsForValue()
+                        .set(COMPANY_KEY + company.getSymbol(), company)
+                    .thenReturn(company)
+                ))
+//                // Fetching the companies from the updated cache.
+//                .thenMany(reactiveRedisCompanyTemplate
+//                    .keys(COMPANY_KEY + "*")
+//                    .flatMap(key -> reactiveRedisCompanyTemplate.opsForValue().get(key))
+//                )
+            )
+            .collectList()
+            .flatMapIterable(CompanyMapper.MAPPER::mapCompanyList);
     }
 
-//    @Cacheable(cacheNames = "companies", key = "#result.block().symbol")
     public Mono<CompanyResponseDto> getBySymbol(String symbol) {
-        return Mono.zip(companyRepository.findBySymbol(symbol), stockRepository.findAllBySymbol(symbol).collectList())
+        return reactiveRedisCompanyTemplate.opsForValue().get(COMPANY_KEY + symbol)
+            .switchIfEmpty(Mono.defer(() -> Mono.zip(companyRepository.findBySymbol(symbol), stockRepository.findAllBySymbol(symbol).collectList())
                 .map(tuples -> {
                     var company = tuples.getT1();
                     var stocks = tuples.getT2();
                     company.setStocks(stocks);
                     return company;
                 })
-                .map(CompanyMapper.MAPPER::map)
-                .cache();
+                .cast(Company.class)
+                .flatMap(company -> reactiveRedisCompanyTemplate.opsForValue().set(COMPANY_KEY + company.getSymbol(), company)
+                    .thenReturn(company))
+            ))
+            .map(CompanyMapper.MAPPER::map);
     }
 
-//    @CacheEvict(cacheNames = "companies", key = "#result.block().id")
     public void updateCompany(Long id, CompanyRequestDto companyRequestDto) {
         companyRepository.findById(id)
-                .switchIfEmpty(Mono.error(new NoSuchElementException(String.format("Company with id %s does not exist", id))))
-                .flatMap(dbCompany -> {
-                    dbCompany.setName(companyRequestDto.getName());
-                    dbCompany.setSymbol(companyRequestDto.getSymbol());
-                    dbCompany.setEnabled(companyRequestDto.isEnabled());
-                    return companyRepository.save(dbCompany);
-                });
+            .switchIfEmpty(Mono.error(new NoSuchElementException(String.format("Company with id %s does not exist", id))))
+            .flatMap(dbCompany -> {
+                dbCompany.setName(companyRequestDto.getName());
+                dbCompany.setSymbol(companyRequestDto.getSymbol());
+                dbCompany.setEnabled(companyRequestDto.isEnabled());
+                return companyRepository.save(dbCompany);
+            })
+            .flatMap(company -> reactiveRedisCompanyTemplate.opsForValue().delete(COMPANY_KEY + company.getSymbol()))
+            .then();
     }
 
-//    @CacheEvict(cacheNames = "companies", key = "#result.block().id")
-    public void deleteById(Long companyId) {
-        companyRepository.findById(companyId)
-                .switchIfEmpty(Mono.error(new NoSuchElementException(String.format("Company with id %s does not exist", companyId))))
-                .flatMap(company -> stockRepository.findAllBySymbol(company.getSymbol())
-                        .flatMap(stockRepository::delete)
-                        .then(companyRepository.delete(company)));
+    public Mono<Void> deleteById(Long companyId) {
+       return companyRepository.findById(companyId)
+            .switchIfEmpty(Mono.defer(() -> Mono.error(new NoSuchElementException(String.format("Company with id %s does not exist", companyId)))))
+            .flatMap(company -> stockRepository.findAllBySymbol(company.getSymbol())
+                .flatMap(stock ->
+                    stockRepository.delete(stock)
+                        .then(reactiveRedisStockTemplate.opsForValue().delete(STOCK_KEY + stock.getId())))
+                .then(companyRepository.delete(company))
+                .then(reactiveRedisCompanyTemplate.opsForValue().delete(COMPANY_KEY + company.getId())))
+            .then();
     }
 
-    /* Clears cache after 10 minutes. */
-//    @CacheEvict(allEntries = true, cacheNames = {"companies"})
-//    @Scheduled(fixedDelay = 600000)
-//    public void cacheEvict() {
-//        log.info("Cleaning cache companies");
-//    }
+    public Mono<Void> deleteAll() {
+        return companyRepository.findAll()
+            .switchIfEmpty(Mono.defer(() -> Mono.error(new NoSuchElementException(String.format("No companies exists")))))
+            .flatMap(company -> stockRepository.findAllBySymbol(company.getSymbol())
+                .flatMap(stock ->
+                    stockRepository.delete(stock)
+                        .then(reactiveRedisStockTemplate.opsForValue().delete(STOCK_KEY + stock.getId())))
+                .then(companyRepository.delete(company))
+                .then(reactiveRedisCompanyTemplate.opsForValue().delete(COMPANY_KEY + company.getId())))
+            .then();
+    }
 }

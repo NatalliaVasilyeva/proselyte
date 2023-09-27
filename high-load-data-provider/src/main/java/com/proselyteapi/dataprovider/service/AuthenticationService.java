@@ -1,6 +1,7 @@
 package com.proselyteapi.dataprovider.service;
 
 import com.proselyteapi.dataprovider.domain.SecurityUserDetails;
+import com.proselyteapi.dataprovider.entity.ApiKey;
 import com.proselyteapi.dataprovider.entity.User;
 import com.proselyteapi.dataprovider.entity.Role;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +24,8 @@ import reactor.core.scheduler.Schedulers;
 public class AuthenticationService {
 
     private final UserService userService;
-
+    private final ApiKeyService apiKeyService;
     private final PasswordEncoder passwordEncoder;
-
-    private final ApiKeyUtils apiKeyUtils;
 
     private final Scheduler scheduler = Schedulers.newParallel("password-encoder", Schedulers.DEFAULT_POOL_SIZE, true);
 
@@ -43,15 +42,9 @@ public class AuthenticationService {
                 null));
     }
 
-    public Mono<String> getApiKey(String username, String password) {
-       return userService.isUserRegister(username,password)
-            .flatMap(isRegister -> {
-                if (isRegister) {
-                    return Mono.just(apiKeyUtils.getApiKey());
-                } else {
-                    return Mono.empty();
-                }
-            });
+    public Mono<String> getApiKey(String username) {
+        return apiKeyService.getApiKey(username);
+
     }
 
     private Mono<UserDetails> getAuthenticatedUser(Authentication authentication) {

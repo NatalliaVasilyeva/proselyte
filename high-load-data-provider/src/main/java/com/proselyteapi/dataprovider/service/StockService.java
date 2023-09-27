@@ -2,82 +2,116 @@ package com.proselyteapi.dataprovider.service;
 
 import com.proselyteapi.dataprovider.dto.StockRequestDto;
 import com.proselyteapi.dataprovider.dto.StockResponseDto;
+import com.proselyteapi.dataprovider.entity.Stock;
 import com.proselyteapi.dataprovider.mapper.StockMapper;
 import com.proselyteapi.dataprovider.repository.CustomStockRepository;
 import com.proselyteapi.dataprovider.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.cache.annotation.CacheConfig;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-//@CacheConfig(cacheNames = "stocks")
-@ConditionalOnProperty(name = "cache.enabled", havingValue = "true")
 public class StockService {
 
+    private final ReactiveRedisTemplate<String, Stock> reactiveRedisStockTemplate;
     private final StockRepository stockRepository;
     private final CustomStockRepository customStockRepository;
 
-//    @CachePut(cacheNames = "stocks", key = "#result.block().symbol + #result.block().createdAt", unless = "#result.block().symbol==null")
+    public static final String STOCK_KEY = "stock:";
+
     public Mono<StockResponseDto> createStock(StockRequestDto stockDto) {
         return Mono.just(stockDto)
-                .map(StockMapper.MAPPER::map)
-                .flatMap(stockRepository::save)
-                .map(StockMapper.MAPPER::map);
-
+            .map(StockMapper.MAPPER::map)
+            .flatMap(stock -> stockRepository.save(stock)
+                .flatMap(savedStock -> reactiveRedisStockTemplate.opsForValue().set(STOCK_KEY + savedStock.getSymbol() + savedStock.getCreatedAt().toString(), savedStock).thenReturn(savedStock)))
+            .map(StockMapper.MAPPER::map);
     }
 
-//    @CachePut(cacheNames = "stocks", key = "#result.block().symbol + #result.block().createdAt", unless = "#result.block().symbol==null")
     public Flux<StockResponseDto> createStocks(List<StockRequestDto> stockDtos) {
         return Flux.fromIterable(stockDtos)
-                .switchIfEmpty(Flux.empty())
-                .flatMap(dto -> customStockRepository.saveStock(StockMapper.MAPPER.map(dto)))
-                .collectList()
-                .map(StockMapper.MAPPER::mapStockList)
-                .flatMapMany(Flux::fromIterable);
+            .switchIfEmpty(Flux.empty())
+            .map(StockMapper.MAPPER::map)
+//            .flatMap(stocks -> customStockRepository.saveStock(stocks)
+            .flatMap(stocks -> stockRepository.save(stocks)
+                .flatMap(savedStock -> reactiveRedisStockTemplate.opsForValue().set(STOCK_KEY + savedStock.getSymbol() + ":" + savedStock.getCreatedAt().toString(), savedStock).thenReturn(savedStock)))
+            .collectList()
+            .map(StockMapper.MAPPER::mapStockList)
+            .flatMapMany(Flux::fromIterable);
     }
 
-//    @Cacheable(cacheNames = "stocks")
     public Flux<StockResponseDto> getAllStocks() {
-        return stockRepository.findAll()
-                .switchIfEmpty(Flux.empty())
-                .collectList()
-                .flatMapIterable(StockMapper.MAPPER::mapStockList)
-                .cache();
+        return reactiveRedisStockTemplate.keys(STOCK_KEY + "*")
+            // Fetching cached stocks.
+            .flatMap(key -> reactiveRedisStockTemplate.opsForValue().get(key))
+            // If cache is empty, fetch the database for stocks
+            .switchIfEmpty(Flux.defer(() -> stockRepository.findAll()
+                // Persisting the fetched stocks in the cache.
+                .flatMap(stock -> reactiveRedisStockTemplate
+                    .opsForValue()
+                    .set(STOCK_KEY + stock.getSymbol() + ":" + stock.getCreatedAt().toString(), stock)
+                    .thenReturn(stock)
+                ))
+//                // Fetching the stocks from the updated cache.
+//                .thenMany(reactiveRedisStockTemplate
+//                    .keys(STOCK_KEY + "*")
+//                    .flatMap(key -> reactiveRedisStockTemplate.opsForValue().get(key))
+//                ))
+            )
+            .collectList()
+            .flatMapIterable(StockMapper.MAPPER::mapStockList);
     }
 
-//    @Cacheable(cacheNames = "stocks")
     public Flux<StockResponseDto> getAllBySymbol(String symbol) {
 
-        return stockRepository.findAllBySymbol(symbol)
-                .collectList()
-                .map(StockMapper.MAPPER::mapStockList)
-                .flatMapMany(Flux::fromIterable)
-                .cache();
+        return reactiveRedisStockTemplate.keys(STOCK_KEY + symbol)
+            .flatMap(key -> reactiveRedisStockTemplate.opsForValue().get(key))
+            .switchIfEmpty(Flux.defer(() -> stockRepository.findAllBySymbol(symbol)
+                .flatMap(stock -> reactiveRedisStockTemplate
+                    .opsForValue()
+                    .set(STOCK_KEY + symbol, stock)
+                    .thenReturn(stock)
+                ))
+            )
+            .map(StockMapper.MAPPER::map);
     }
 
-//    @Cacheable(cacheNames = "stocks", key = "#result.block().symbol + #result.block().createdAt")
     public Mono<StockResponseDto> getLastChangedBySymbol(String symbol) {
-        return stockRepository.findFirstBySymbolOrderByCreatedAtDesc(symbol)
-                .map(StockMapper.MAPPER::map)
-                .cache();
+        return reactiveRedisStockTemplate.opsForSet()
+            .scan(STOCK_KEY + symbol)
+            .switchIfEmpty(Mono.defer(() -> stockRepository.findFirstBySymbolOrderByCreatedAtDesc(symbol)
+                .flatMap(stock -> reactiveRedisStockTemplate
+                    .opsForValue()
+                    .set(STOCK_KEY + symbol, stock)
+                    .thenReturn(stock)
+                ))
+            )
+            .sort(Comparator.comparing(Stock::getCreatedAt))
+            .elementAt(0)
+            .map(StockMapper.MAPPER::map);
     }
 
-    /* Clears cache after 10 minutes. */
-//    @CacheEvict(allEntries = true, cacheNames = {"stocks"})
-//    @Scheduled(fixedDelay = 600000)
-//    public void cacheEvict() {
-//        log.info("Cleaning cache stocks");
-//    }
+    public Mono<Void> deleteById(Long stockId) {
+        return stockRepository.findById(stockId)
+            .switchIfEmpty(Mono.defer(() -> Mono.error(new NoSuchElementException(String.format("Stock with id %s does not exist", stockId)))))
+            .flatMap(stock -> stockRepository.delete(stock)
+                .then(reactiveRedisStockTemplate.opsForValue().delete(STOCK_KEY + stock.getId())))
+            .then();
+    }
+
+    public Mono<Void> deleteAll() {
+        return stockRepository.findAll()
+            .switchIfEmpty(Mono.defer(() -> Mono.error(new NoSuchElementException(String.format("No stocks exists")))))
+            .then(stockRepository.deleteAll()
+                .then(reactiveRedisStockTemplate.opsForValue().delete(STOCK_KEY + "*")))
+            .then();
+    }
 }

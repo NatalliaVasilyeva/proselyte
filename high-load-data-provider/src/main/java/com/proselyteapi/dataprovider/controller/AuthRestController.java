@@ -26,8 +26,12 @@ public class AuthRestController {
     private final UserService userService;
     private final UserMapper userMapper;
 
+    public static final String REGISTER_PATH = "/register";
+    public static final String TOKEN_PATH = "/get-token";
+    public static final String API_KEY_PATH = "/get-api-key";
 
-    @PostMapping("/register")
+
+    @PostMapping(REGISTER_PATH)
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<UserDto> register(@RequestBody UserDto dto) {
         var user = userMapper.map(dto);
@@ -35,7 +39,7 @@ public class AuthRestController {
             .map(userMapper::map);
     }
 
-    @PostMapping("/get-token")
+    @PostMapping(TOKEN_PATH)
     @ResponseStatus(HttpStatus.OK)
     public Mono<AuthResponseDto> getToken(@RequestBody AuthRequestDto dto) {
         var authenticationToken = new UsernamePasswordAuthenticationToken(dto.getUsername(), dto.getPassword());
@@ -52,9 +56,9 @@ public class AuthRestController {
                 ));
     }
 
-    @PostMapping("/get-api-key")
+    @PostMapping(API_KEY_PATH)
     @ResponseStatus(HttpStatus.OK)
     public Mono<String> getApiKey(@RequestBody AuthRequestDto dto) {
-        return authenticationService.getApiKey(dto.getUsername(), dto.getPassword());
+        return authenticationService.getApiKey(dto.getUsername());
     }
 }

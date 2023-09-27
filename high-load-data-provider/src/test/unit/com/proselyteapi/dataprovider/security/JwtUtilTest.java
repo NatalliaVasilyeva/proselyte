@@ -3,13 +3,8 @@ package com.proselyteapi.dataprovider.security;
 import annotation.Unit;
 import com.proselyteapi.dataprovider.entity.Role;
 import com.proselyteapi.dataprovider.entity.User;
-import com.proselyteapi.dataprovider.security.JwtUtil;
 import com.proselyteapi.dataprovider.service.TokenService;
-import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
-import org.mockito.Spy;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDateTime;
 
@@ -38,8 +33,5 @@ class JwtUtilTest {
         var token = tokenService.generateToken(user);
         var claims = jwtUtil.getAllClaimsFromToken(token.getToken());
         var a = claims.getSubject();
-        System.out.println(a);
-//        assertThat(jwt.getSubject(), is(notNullValue()));
-//        assertThat(jwt.getSubject(), is("1234567890"));
     }
 }

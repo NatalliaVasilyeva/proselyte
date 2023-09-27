@@ -29,6 +29,7 @@ spring:
     user: ${spring.r2dbc.username}
     password: ${spring.r2dbc.password}
     default-schema: ${spring.r2dbc.properties.schema}
+    change-log: db/changelog/db.changelog-master.yaml
   cache:
     type: redis
   data:
@@ -44,10 +45,12 @@ spring:
 
 logging:
   level:
-    root: DEBUG
-    org.springframework.boot.autoconfigure.security: INFO
+    root: TRACE
+    org.springframework.boot.autoconfigure.security: TRACE
     org.springframework.web: INFO
     org.springframework.security: DEBUG
+    org.springframework.data: DEBUG
+    io.r2dbc.postgresql: DEBUG
 
 cache:
   enabled: true

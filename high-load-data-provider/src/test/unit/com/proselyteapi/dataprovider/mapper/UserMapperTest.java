@@ -4,7 +4,6 @@ import annotation.Unit;
 import com.proselyteapi.dataprovider.dto.UserDto;
 import com.proselyteapi.dataprovider.entity.Role;
 import com.proselyteapi.dataprovider.entity.User;
-import com.proselyteapi.dataprovider.mapper.UserMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

@@ -24,35 +24,40 @@ public class CronJob {
 
 
     @Async("asyncCompanyExecutor")
-    @Scheduled(initialDelay = 100, fixedDelay = Long.MAX_VALUE, timeUnit = TimeUnit.NANOSECONDS)
+    @Scheduled(initialDelay = 5000, fixedDelay = Long.MAX_VALUE, timeUnit = TimeUnit.NANOSECONDS)
     public void onStartupGenerateSymbolsAndNamesJob() {
-        CompletableFuture.runAsync(dataGeneratingService::fillSymbolsList)
-                .thenRun(dataGeneratingService::fillCompanyNamesQueue)
-                .join();
 
-        CompletableFuture
-                .supplyAsync(dataGeneratingService::createCompanies)
-                .thenApply(companyService::createCompanies)
-                .thenAccept(companyResponseDtoFlux -> {
+        companyService.getAllCompaniesWithoutStocks()
+            .count()
+            .doOnNext(count -> {
+                if (count.equals(0L)) {
+                    CompletableFuture.allOf(CompletableFuture.runAsync(dataGeneratingService::fillSymbolsList),
+                            CompletableFuture.runAsync(dataGeneratingService::fillCompanyNamesQueue))
+                        .join();
 
-                    System.out.println("after saving");
-                    companyResponseDtoFlux
-                        .collectList()
-                            .doOnNext(companyResponseDtos -> {
-                            System.out.println("HERE " + companyResponseDtos.toString());
-                            companyResponseDtos.forEach(companyResponseDto -> dataGeneratingService.fillCompanyIdsMap(companyResponseDto.getSymbol(), companyResponseDto.getId()));
-                        });
-                })
-                .join();
+                    CompletableFuture
+                        .supplyAsync(dataGeneratingService::createCompanies)
+                        .thenApply(result -> companyService.saveCompanies(result)
+                            .doOnNext(r -> dataGeneratingService.fillCompanyIdsMap(r.getSymbol(), r.getId())).subscribe())
+                        .join();
+                } else {
+                    companyService.getAllCompaniesWithoutStocks()
+                        .doOnNext(result ->
+                            CompletableFuture.allOf(CompletableFuture.runAsync(() -> dataGeneratingService.addSymbolToList(result.getSymbol())),
+                                    CompletableFuture.runAsync(() -> dataGeneratingService.addIdToList(result.getId(), result.getSymbol())))
+                                .join())
+                        .subscribe();
+                }
+            })
+            .subscribe();
     }
 
     @Async("asyncStockExecutor")
-    @Scheduled(cron = "*/150 * * * * *")
+    @Scheduled(cron = "*/30 * * * * *")
     public void generateStockDataJob() {
-        System.out.println("start");
         CompletableFuture.supplyAsync(dataGeneratingService::createStocks)
-                .thenAccept(stockService::createStocks)
-                .join();
-        System.out.println("finish");
+            .thenAccept(result -> stockService.createStocks(result)
+                .subscribe())
+            .join();
     }
 }
