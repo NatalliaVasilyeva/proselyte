@@ -51,9 +51,3 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.data: DEBUG
     io.r2dbc.postgresql: DEBUG
-
-cache:
-  enabled: true
-
-scheduling:
-  enabled: true

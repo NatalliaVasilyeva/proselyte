@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,7 +42,7 @@ public class CompanyRestController {
     }
 
     @PostMapping("/company")
-    @ResponseStatus(HttpStatus.OK)
+    @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create company")
     public Mono<CompanyResponseDto> createCompany(@RequestHeader(name = API_KEY_HEADER) @Valid String apiKey,
                                                   @Parameter(required = true) @Valid @RequestBody CompanyRequestDto companyRequestDto) {
@@ -51,7 +50,7 @@ public class CompanyRestController {
     }
 
     @PostMapping("/companies")
-    @ResponseStatus(HttpStatus.OK)
+    @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create company")
     public Flux<CompanyResponseDto> createCompanies(@RequestHeader(name = API_KEY_HEADER) @Valid String apiKey,
                                                   @Parameter(required = true) @Valid @RequestBody List<CompanyRequestDto> companyRequestDto) {

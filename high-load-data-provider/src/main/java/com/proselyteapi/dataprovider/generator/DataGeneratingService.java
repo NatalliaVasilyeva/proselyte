@@ -64,7 +64,6 @@ public class DataGeneratingService {
     }
 
     public Mono<Void> fillCompanyIdsMap(String symbol, Long id) {
-
         dataStorage.addCompanyId(symbol, id);
         return Mono.empty().then();
     }

@@ -1,6 +1,25 @@
 version: '3.9'
 
 services:
+  app:
+    image: high-load-data-provider:latest
+    build:
+      context: .
+    container_name: app
+    restart: always
+    network_mode: bridge
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_R2DBC_URL: jdbc:postgresql://data-provider/data-provider
+      SPRING_R2DBC_URL_USERNAME: data-provider
+      SPRING_R2DBC_URL_PASSWORD: data-provider
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+    depends_on:
+      - data-provider
+      - redis
+
   data-provider:
     mem_limit: 512m
     cpus: 0.5
@@ -40,3 +59,9 @@ services:
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
     command:
       redis-server /opt/redis/redis.conf
+    networks:
+      - redis-network
+
+networks:
+  redis-network:
+    driver: bridge

@@ -1,7 +1,6 @@
 package com.proselyteapi.dataprovider.service;
 
 import com.proselyteapi.dataprovider.domain.SecurityUserDetails;
-import com.proselyteapi.dataprovider.entity.ApiKey;
 import com.proselyteapi.dataprovider.entity.User;
 import com.proselyteapi.dataprovider.entity.Role;
 import lombok.RequiredArgsConstructor;

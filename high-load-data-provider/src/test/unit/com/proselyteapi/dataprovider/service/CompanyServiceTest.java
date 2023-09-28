@@ -329,10 +329,8 @@ class CompanyServiceTest {
         when(stockRepository.findAllBySymbol(symbol)).thenReturn(Flux.just(stockOne));
         when(companyRepository.delete(companyOne)).thenReturn(Mono.empty().then());
         when(stockRepository.delete(stockOne)).thenReturn(Mono.empty().then());
-        when(reactiveValueStockOperations.delete(stockKey)).thenReturn(Mono.just(true));
-        when(reactiveValueOperations.delete(companyKey)).thenReturn(Mono.just(true));
-        when(reactiveRedisCompanyTemplate.opsForValue()).thenReturn(reactiveValueOperations);
-        when(reactiveRedisStockTemplate.opsForValue()).thenReturn(reactiveValueStockOperations);
+        when(reactiveRedisStockTemplate.delete(stockKey)).thenReturn(Mono.just(1L));
+        when(reactiveRedisCompanyTemplate.delete(companyKey)).thenReturn(Mono.just(1L));
 
         var result = companyService.deleteById(id);
         StepVerifier.create(result)
@@ -342,8 +340,6 @@ class CompanyServiceTest {
         verify(stockRepository, times(1)).findAllBySymbol(symbol);
         verify(companyRepository, times(1)).delete(companyOne);
         verify(stockRepository, times(1)).delete(stockOne);
-        verify(reactiveRedisStockTemplate, times(1)).opsForValue();
-        verify(reactiveRedisCompanyTemplate, times(1)).opsForValue();
     }
 
     @Test
@@ -395,10 +391,8 @@ class CompanyServiceTest {
         when(stockRepository.findAllBySymbol(companyTwo.getSymbol())).thenReturn(Flux.just(stockTwo));
         when(stockRepository.delete(stockOne)).thenReturn(Mono.empty().then());
         when(stockRepository.delete(stockTwo)).thenReturn(Mono.empty().then());
-        when(reactiveValueStockOperations.delete(anyString())).thenReturn(Mono.just(true));
-        when(reactiveValueOperations.delete(anyString())).thenReturn(Mono.just(true));
-        when(reactiveRedisCompanyTemplate.opsForValue()).thenReturn(reactiveValueOperations);
-        when(reactiveRedisStockTemplate.opsForValue()).thenReturn(reactiveValueStockOperations);
+        when(reactiveRedisStockTemplate.delete(anyString())).thenReturn(Mono.just(1L));
+        when(reactiveRedisCompanyTemplate.delete(anyString())).thenReturn(Mono.just(1L));
 
         var result = companyService.deleteAll();
         StepVerifier.create(result)
@@ -408,7 +402,7 @@ class CompanyServiceTest {
         verify(companyRepository, times(2)).delete(any(Company.class));
         verify(stockRepository, times(2)).findAllBySymbol(anyString());
         verify(stockRepository, times(2)).delete(any(Stock.class));
-        verify(reactiveRedisStockTemplate, times(2)).opsForValue();
-        verify(reactiveRedisCompanyTemplate, times(2)).opsForValue();
+        verify(reactiveRedisStockTemplate, times(2)).delete(anyString());
+        verify(reactiveRedisCompanyTemplate, times(2)).delete(anyString());
     }
 }

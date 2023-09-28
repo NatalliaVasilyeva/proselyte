@@ -60,11 +60,6 @@ public class StockService {
                     .set(STOCK_KEY + stock.getSymbol() + ":" + stock.getCreatedAt().toString(), stock)
                     .thenReturn(stock)
                 ))
-//                // Fetching the stocks from the updated cache.
-//                .thenMany(reactiveRedisStockTemplate
-//                    .keys(STOCK_KEY + "*")
-//                    .flatMap(key -> reactiveRedisStockTemplate.opsForValue().get(key))
-//                ))
             )
             .collectList()
             .flatMapIterable(StockMapper.MAPPER::mapStockList);
@@ -85,8 +80,8 @@ public class StockService {
     }
 
     public Mono<StockResponseDto> getLastChangedBySymbol(String symbol) {
-        return reactiveRedisStockTemplate.opsForSet()
-            .scan(STOCK_KEY + symbol)
+        return reactiveRedisStockTemplate.keys(STOCK_KEY + symbol)
+            .flatMap(key -> reactiveRedisStockTemplate.opsForValue().get(key))
             .switchIfEmpty(Mono.defer(() -> stockRepository.findFirstBySymbolOrderByCreatedAtDesc(symbol)
                 .flatMap(stock -> reactiveRedisStockTemplate
                     .opsForValue()
@@ -94,7 +89,7 @@ public class StockService {
                     .thenReturn(stock)
                 ))
             )
-            .sort(Comparator.comparing(Stock::getCreatedAt))
+            .sort(Comparator.comparing(Stock::getCreatedAt).reversed())
             .elementAt(0)
             .map(StockMapper.MAPPER::map);
     }
@@ -103,15 +98,15 @@ public class StockService {
         return stockRepository.findById(stockId)
             .switchIfEmpty(Mono.defer(() -> Mono.error(new NoSuchElementException(String.format("Stock with id %s does not exist", stockId)))))
             .flatMap(stock -> stockRepository.delete(stock)
-                .then(reactiveRedisStockTemplate.opsForValue().delete(STOCK_KEY + stock.getId())))
+                .then(reactiveRedisStockTemplate.delete(STOCK_KEY + stock.getId())))
             .then();
     }
 
     public Mono<Void> deleteAll() {
         return stockRepository.findAll()
-            .switchIfEmpty(Mono.defer(() -> Mono.error(new NoSuchElementException(String.format("No stocks exists")))))
+            .switchIfEmpty(Mono.defer(() -> Mono.error(new NoSuchElementException("No stocks exists"))))
             .then(stockRepository.deleteAll()
-                .then(reactiveRedisStockTemplate.opsForValue().delete(STOCK_KEY + "*")))
+                .then(reactiveRedisStockTemplate.delete(reactiveRedisStockTemplate.keys(STOCK_KEY + "*"))))
             .then();
     }
 }

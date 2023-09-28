@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.reactivestreams.Publisher;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.data.redis.core.ReactiveSetOperations;
 import org.springframework.data.redis.core.ReactiveValueOperations;
@@ -299,8 +300,10 @@ class StockServiceTest {
             .createdAt(LocalDateTime.now().plusHours(2))
             .build();
 
-        when(reactiveSetOperations.scan(key)).thenReturn(Flux.just(stockOne, stockTwo));
-        when(reactiveRedisStockTemplate.opsForSet()).thenReturn(reactiveSetOperations);
+        when(reactiveRedisStockTemplate.keys(key)).thenReturn(Flux.just("stock:AAAA:" + stockOne.getCreatedAt().toString(), "stock:AAAA:" + stockTwo.getCreatedAt().toString()));
+        when(reactiveValueOperations.get("stock:AAAA:" + stockOne.getCreatedAt().toString())).thenReturn(Mono.just(stockOne));
+        when(reactiveValueOperations.get("stock:AAAA:" + stockTwo.getCreatedAt().toString())).thenReturn(Mono.just(stockTwo));
+        when(reactiveRedisStockTemplate.opsForValue()).thenReturn(reactiveValueOperations);
 
         var result = stockService.getLastChangedBySymbol(symbol);
 
@@ -314,7 +317,8 @@ class StockServiceTest {
             .verifyComplete();
 
         verify(stockRepository, times(0)).findFirstBySymbolOrderByCreatedAtDesc(symbol);
-        verify(reactiveRedisStockTemplate, times(1)).opsForSet();
+        verify(reactiveRedisStockTemplate, times(2)).opsForValue();
+        verify(reactiveRedisStockTemplate, times(1)).keys(anyString());
     }
 
     @Test
@@ -330,8 +334,8 @@ class StockServiceTest {
             .createdAt(LocalDateTime.now().plusHours(2))
             .build();
 
-        when(reactiveSetOperations.scan(key)).thenReturn(Flux.empty());
-        when(reactiveRedisStockTemplate.opsForSet()).thenReturn(reactiveSetOperations);
+        when(reactiveRedisStockTemplate.keys(key)).thenReturn(Flux.just("stock:AAAA"));
+        when(reactiveValueOperations.get("stock:AAAA")).thenReturn(Mono.empty());
         when(reactiveValueOperations.set(key, stockTwo)).thenReturn(Mono.just(true));
         when(reactiveRedisStockTemplate.opsForValue()).thenReturn(reactiveValueOperations);
         when(stockRepository.findFirstBySymbolOrderByCreatedAtDesc(symbol)).thenReturn(Mono.just(stockTwo));
@@ -349,8 +353,9 @@ class StockServiceTest {
             .verifyComplete();
 
         verify(stockRepository, times(1)).findFirstBySymbolOrderByCreatedAtDesc(symbol);
-        verify(reactiveRedisStockTemplate, times(1)).opsForSet();
-        verify(reactiveRedisStockTemplate, times(1)).opsForValue();
+        verify(reactiveRedisStockTemplate, times(1)).keys(key);
+        verify(reactiveRedisStockTemplate, times(2)).opsForValue();
+        verify(reactiveValueOperations, times(1)).set(key, stockTwo);
     }
 
     @Test
@@ -369,8 +374,9 @@ class StockServiceTest {
 
         when(stockRepository.findById(id)).thenReturn(Mono.just(stockOne));
         when(stockRepository.delete(stockOne)).thenReturn(Mono.empty().then());
-        when(reactiveValueOperations.delete(key)).thenReturn(Mono.just(true));
-        when(reactiveRedisStockTemplate.opsForValue()).thenReturn(reactiveValueOperations);
+        when(reactiveRedisStockTemplate.delete(key)).thenReturn(Mono.just(1L));
+//        when(reactiveValueOperations.delete(key)).thenReturn(Mono.just(true));
+//        when(reactiveRedisStockTemplate.opsForValue()).thenReturn(reactiveValueOperations);
 
         var result = stockService.deleteById(id);
         StepVerifier.create(result)
@@ -378,7 +384,7 @@ class StockServiceTest {
 
         verify(stockRepository, times(1)).findById(id);
         verify(stockRepository, times(1)).delete(stockOne);
-        verify(reactiveRedisStockTemplate, times(1)).opsForValue();
+        verify(reactiveRedisStockTemplate, times(1)).delete(anyString());
     }
 
     @Test
@@ -406,8 +412,10 @@ class StockServiceTest {
 
         when(stockRepository.findAll()).thenReturn(Flux.just(stockOne, stockTwo));
         when(stockRepository.deleteAll()).thenReturn(Mono.empty().then());
-        when(reactiveValueOperations.delete(key + "*")).thenReturn(Mono.just(true));
-        when(reactiveRedisStockTemplate.opsForValue()).thenReturn(reactiveValueOperations);
+//        when(reactiveValueOperations.delete(key + "*")).thenReturn(Mono.just(true));
+        when(reactiveRedisStockTemplate.keys(key + "*")).thenReturn(Flux.just("stock:AAAA", "stock:BBBB"));
+        when(reactiveRedisStockTemplate.delete(any(Publisher.class))).thenReturn(Mono.just(1l));
+//        when(reactiveRedisStockTemplate.opsForValue()).thenReturn(reactiveValueOperations);
 
         var result = stockService.deleteAll();
         StepVerifier.create(result)
@@ -415,7 +423,7 @@ class StockServiceTest {
 
         verify(stockRepository, times(1)).findAll();
         verify(stockRepository, times(1)).deleteAll();
-        verify(reactiveRedisStockTemplate, times(1)).opsForValue();
+        verify(reactiveRedisStockTemplate, times(1)).delete(any(Publisher.class));
     }
 
 

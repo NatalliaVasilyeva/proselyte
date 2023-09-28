@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 @Unit
 class JwtUtilTest {
 
@@ -33,5 +35,6 @@ class JwtUtilTest {
         var token = tokenService.generateToken(user);
         var claims = jwtUtil.getAllClaimsFromToken(token.getToken());
         var a = claims.getSubject();
+        assertEquals(a, user.getId().toString());
     }
 }

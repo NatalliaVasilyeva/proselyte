@@ -88,11 +88,6 @@ public class CompanyService {
                         .set(COMPANY_KEY + company.getSymbol(), company)
                     .thenReturn(company)
                 ))
-//                // Fetching the companies from the updated cache.
-//                .thenMany(reactiveRedisCompanyTemplate
-//                    .keys(COMPANY_KEY + "*")
-//                    .flatMap(key -> reactiveRedisCompanyTemplate.opsForValue().get(key))
-//                )
             )
             .collectList()
             .flatMapIterable(CompanyMapper.MAPPER::mapCompanyList);
@@ -133,21 +128,21 @@ public class CompanyService {
             .flatMap(company -> stockRepository.findAllBySymbol(company.getSymbol())
                 .flatMap(stock ->
                     stockRepository.delete(stock)
-                        .then(reactiveRedisStockTemplate.opsForValue().delete(STOCK_KEY + stock.getId())))
+                        .then(reactiveRedisStockTemplate.delete(STOCK_KEY + stock.getId())))
                 .then(companyRepository.delete(company))
-                .then(reactiveRedisCompanyTemplate.opsForValue().delete(COMPANY_KEY + company.getId())))
+                .then(reactiveRedisCompanyTemplate.delete(COMPANY_KEY + company.getId())))
             .then();
     }
 
     public Mono<Void> deleteAll() {
         return companyRepository.findAll()
-            .switchIfEmpty(Mono.defer(() -> Mono.error(new NoSuchElementException(String.format("No companies exists")))))
+            .switchIfEmpty(Mono.defer(() -> Mono.error(new NoSuchElementException("No companies exists"))))
             .flatMap(company -> stockRepository.findAllBySymbol(company.getSymbol())
                 .flatMap(stock ->
                     stockRepository.delete(stock)
-                        .then(reactiveRedisStockTemplate.opsForValue().delete(STOCK_KEY + stock.getId())))
+                        .then(reactiveRedisStockTemplate.delete(STOCK_KEY + stock.getId())))
                 .then(companyRepository.delete(company))
-                .then(reactiveRedisCompanyTemplate.opsForValue().delete(COMPANY_KEY + company.getId())))
+                .then(reactiveRedisCompanyTemplate.delete(COMPANY_KEY + company.getId())))
             .then();
     }
 }
