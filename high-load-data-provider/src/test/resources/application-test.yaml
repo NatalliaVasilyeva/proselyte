@@ -1,6 +1,7 @@
 spring:
   r2dbc:
-    url: r2dbc:postgres://localhost:5433/data-provider
-    username: data-provider
-    password: data-provider
-    default-schema: data_provider_test
+    properties:
+      schema: data_provider_test
+
+scheduling:
+  enabled: false

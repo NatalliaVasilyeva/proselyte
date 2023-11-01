@@ -6,6 +6,7 @@ import com.proselyteapi.dataprovider.dto.StockRequestDto;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Random;
@@ -35,23 +36,36 @@ public class DataGeneratingService {
         this.random = new Random();
     }
 
-    public void fillSymbolsList() {
-        Stream.iterate(0, n -> n < COMPANIES_NUMBER, n -> n + 1)
+    public Mono<Void> fillSymbolsList() {
+       Stream.iterate(0, n -> n < COMPANIES_NUMBER.get(), n -> n + 1)
                 .forEach(x -> dataStorage.addSymbol(createSymbol()));
+       return Mono.empty().then();
+    }
+
+    public Mono<Void> addSymbolToList(String symbol) {
+           dataStorage.addSymbol(symbol);
+        return Mono.empty().then();
+    }
+
+    public Mono<Void> addIdToList(Long id, String symbol) {
+        dataStorage.addCompanyId(symbol, id);
+        return Mono.empty().then();
     }
 
     private String createSymbol() {
         return UUID.randomUUID().toString().toUpperCase().substring(0, 5);
     }
 
-    public void fillCompanyNamesQueue() {
-        while (dataStorage.getCompanyNames().size() < COMPANIES_NUMBER) {
+    public Mono<Void> fillCompanyNamesQueue() {
+        while (dataStorage.getCompanyNames().size() < COMPANIES_NUMBER.get()) {
             dataStorage.addName(faker.company().name());
         }
+        return Mono.empty().then();
     }
 
-    public void fillCompanyIdsMap(String symbol, Long id) {
+    public Mono<Void> fillCompanyIdsMap(String symbol, Long id) {
         dataStorage.addCompanyId(symbol, id);
+        return Mono.empty().then();
     }
 
     public List<CompanyRequestDto> createCompanies() {
@@ -85,7 +99,7 @@ public class DataGeneratingService {
     }
 
     public StockRequestDto createStock() {
-        String symbol = dataStorage.peekSymbol(getRandomIntInRange(0, COMPANIES_NUMBER));
+        String symbol = dataStorage.peekSymbol(getRandomIntInRange(0, COMPANIES_NUMBER.get()));
         return StockRequestDto.builder()
                 .symbol(symbol)
                 .price(createStockPrice(symbol))

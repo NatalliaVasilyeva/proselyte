@@ -14,19 +14,17 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface CompanyMapper {
 
-    CompanyMapper MAPPER = Mappers.getMapper(CompanyMapper.class );
+    CompanyMapper MAPPER = Mappers.getMapper(CompanyMapper.class);
 
-    @Mapping(target="stockDtos", source="stocks",
-//        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_DEFAULT,
+    @Mapping(target = "stockDtos", source = "stocks",
         nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
     CompanyResponseDto map(Company company);
 
-    @Mapping(target="id", ignore = true)
+    @Mapping(target = "id", ignore = true)
     @InheritInverseConfiguration
     Company map(CompanyRequestDto dto);
 
     List<CompanyResponseDto> mapCompanyList(List<Company> companies);
 
     List<Company> mapCompanyDtoList(List<CompanyRequestDto> companyRequestDtos);
-
 }

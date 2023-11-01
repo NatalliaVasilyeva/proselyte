@@ -7,16 +7,17 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 @Getter
 public class DataStorage {
 
-    public static final Integer COMPANIES_NUMBER = 20;
+    public static final AtomicInteger COMPANIES_NUMBER = new AtomicInteger(20);
     private final CopyOnWriteArrayList<String> symbols = new CopyOnWriteArrayList<>();
     private final ConcurrentHashMap<String, Double> stocksPrice = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> companiesIds = new ConcurrentHashMap<>();
-    private final BlockingQueue<String> companyNames = new LinkedBlockingQueue<>(COMPANIES_NUMBER);
+    private final BlockingQueue<String> companyNames = new LinkedBlockingQueue<>(COMPANIES_NUMBER.get());
 
 
     public String peekSymbol(Integer index) {

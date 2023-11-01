@@ -10,7 +10,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,8 +24,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-import static com.proselyteapi.dataprovider.service.ApiKeyUtils.API_KEY_HEADER;
-
 @Tag(name = "Stock API")
 @RestController
 @RequiredArgsConstructor
@@ -36,10 +33,11 @@ public class StockRestController {
 
     private final StockService stockService;
 
+    public static final String API_KEY_HEADER = "x-api-key";
+
     @PostMapping("/stock")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create stock")
-    @PreAuthorize("@ApiKeyUtils.isValidApiKey(#apiKey)")
     public Mono<StockResponseDto> createStock(@RequestHeader(name = API_KEY_HEADER) @Valid String apiKey,
                                                   @Parameter(required = true) @Valid @RequestBody StockRequestDto stockDto) {
         return stockService.createStock(stockDto);
@@ -48,7 +46,6 @@ public class StockRestController {
     @PostMapping("/stocks")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create stocks")
-    @PreAuthorize("@ApiKeyUtils.isValidApiKey(#apiKey)")
     public Flux<StockResponseDto> createStocks(@RequestHeader(name = API_KEY_HEADER) @Valid String apiKey,
                                                @Parameter(required = true) @Valid @RequestBody List<StockRequestDto> stockDtos) {
         return stockService.createStocks(stockDtos);
@@ -57,7 +54,6 @@ public class StockRestController {
     @GetMapping("/stocks/{stock_code}/quote")
     @ResponseStatus(HttpStatus.OK)
     @Operation(summary = "Get information about current company stock value")
-    @PreAuthorize("@ApiKeyUtils.isValidApiKey(#apiKey)")
     public Mono<StockResponseDto> getLastStockInfoBySymbol(@RequestHeader(name = API_KEY_HEADER) @Valid String apiKey,
                                                            @PathVariable
                                                            @Pattern(
@@ -69,7 +65,6 @@ public class StockRestController {
     @GetMapping("/stocks/{stock_code:^\\w{1,5}$}")
     @ResponseStatus(HttpStatus.OK)
     @Operation(summary = "Get information about all company stocks")
-    @PreAuthorize("@ApiKeyUtils.isValidApiKey(#apiKey)")
     public Flux<StockResponseDto> getAllStocksBySymbol(@RequestHeader(name = API_KEY_HEADER) @Valid String apiKey,
                                                        @PathVariable String stock_code) {
         return stockService.getAllBySymbol(stock_code);

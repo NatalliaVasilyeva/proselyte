@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -27,7 +26,7 @@ public class WebSecurityConfig {
 
     @Value("${jwt.secret}")
     private String secret;
-    private final String [] privateRoutes = {"/api/v1/get-api-key"};
+    private final String [] publicRoutes = {"/api/v1/register", "/api/v1/get-token"};
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http, AuthenticationManager authenticationManager, TokenService tokenService) {
@@ -36,10 +35,10 @@ public class WebSecurityConfig {
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .authorizeExchange(exchanges ->
                 exchanges
-                    .pathMatchers(privateRoutes)
-                    .authenticated()
-                    .anyExchange()
+                    .pathMatchers(publicRoutes)
                     .permitAll()
+                    .anyExchange()
+                    .authenticated()
             )
             .exceptionHandling(handling ->
                 handling.authenticationEntryPoint((swe , e) -> {

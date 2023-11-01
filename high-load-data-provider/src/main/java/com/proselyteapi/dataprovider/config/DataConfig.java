@@ -6,5 +6,6 @@ import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
 
 @Configuration
 @EnableR2dbcAuditing
+@EnableR2dbcRepositories
 public class DataConfig {
 }
