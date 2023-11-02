@@ -1,0 +1,33 @@
+version: "3.8"
+services:
+  stocks-receiver-app:
+    platform: linux/amd64/v8
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stocks-receiver
+    restart: always
+    network_mode: bridge
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_R2DBC_URL: jdbc:postgresql://stocks-receiver-db/stocks-receiver
+      SPRING_R2DBC_URL_USERNAME: stocks-receiver
+      SPRING_R2DBC_URL_PASSWORD: stocks-receiver
+    depends_on:
+      - stocks-receiver-db
+
+  stocks-receiver-db:
+    platform: linux/amd64/v8
+    image: postgres:latest
+    command: postgres -c 'max_connections=10000'
+    container_name: stocks-receiver-db
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - ${POSTGRES_PORT}:5432
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+      - ./sql/create_db.sql:/docker-entrypoint-initdb.d/create_db.sql
+      - ./sql/create_schema.sql:/docker-entrypoint-initdb.d/create_schema.sql

@@ -1,0 +1,28 @@
+server:
+  port: 8085
+  shutdown: graceful
+  error:
+    include-message: always
+
+spring:
+  r2dbc:
+    url: r2dbc:postgres://localhost:5434/stocks-receiver
+    username: stocks-receiver
+    password: stocks-receiver
+    properties:
+      schema: stocks_receiver
+  liquibase:
+    enabled: on
+    url: jdbc:postgresql://localhost:5434/stocks-receiver
+    user: ${spring.r2dbc.username}
+    password: ${spring.r2dbc.password}
+    default-schema: ${spring.r2dbc.properties.schema}
+    change-log: db/changelog/db.changelog-master.yaml
+
+# This section includes all properties related to external service API calls
+service:
+  source:
+    host: https://api.iex.cloud/v1/data/core
+    token: pk_0a3b25bdaa6746d089cfc3c498453147
+webClient:
+  readWriteTimeoutMs: 20000
