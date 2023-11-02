@@ -1,0 +1,7 @@
+spring:
+  r2dbc:
+    properties:
+      schema: stocks_receiver_test
+
+scheduling:
+  enabled: false
